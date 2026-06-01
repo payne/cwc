@@ -139,6 +139,7 @@
     <button class="nav-item active" data-screen="board">♟ Board</button>
     <button class="nav-item" data-screen="params">⚙ CW Parameters</button>
     <button class="nav-item" data-screen="log">📋 Move Log</button>
+    <button class="nav-item" data-screen="about">ℹ About</button>
   </nav>
 
   <!-- Screen: Board (default) -->
@@ -183,8 +184,8 @@
 
         <div class="param-row" style="margin-bottom:12px">
           <label class="label" for="squelchRange">squelch threshold</label>
-          <input type="range" id="squelchRange" min="0" max="100" value="0" step="1">
-          <div class="param-val" id="squelchVal">0</div>
+          <input type="range" id="squelchRange" min="0" max="100" value="5" step="1">
+          <div class="param-val" id="squelchVal">5</div>
         </div>
 
         <div class="label">signal level <span style="font-size:10px;color:var(--color-text-tertiary)">(red line = squelch)</span></div>
@@ -239,6 +240,21 @@
     <div class="card">
       <div class="section-head">Move Log</div>
       <div class="history" id="history"><span class="log-empty">No moves yet</span></div>
+    </div>
+  </div>
+
+  <!-- Screen: About -->
+  <div class="screen screen-about" id="screenAbout">
+    <div class="card">
+      <div class="section-head">About</div>
+      <div style="margin-bottom:12px">
+        <div class="label">Source Code</div>
+        <a href="https://github.com/payne/cwc" target="_blank" rel="noopener" style="color:#4a90d9;font-size:13px">https://github.com/payne/cwc</a>
+      </div>
+      <div>
+        <div class="label">Build</div>
+        <div style="font-size:12px;font-family:var(--font-mono);color:var(--color-text-secondary)">2026-06-01 15:19:23 · 0ea3290</div>
+      </div>
     </div>
   </div>
 </div>

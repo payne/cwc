@@ -347,6 +347,15 @@ async function transmitCW() {
 
   const ac = getAC();
   await ac.resume();
+  // iOS Safari requires audio to start immediately from user gesture
+  // Play a silent primer to unlock the audio context
+  const primer = ac.createOscillator();
+  const primerGain = ac.createGain();
+  primerGain.gain.value = 0.001; // Nearly silent
+  primer.connect(primerGain);
+  primerGain.connect(ac.destination);
+  primer.start();
+  primer.stop(ac.currentTime + 0.001);
   let t = ac.currentTime + 0.05;
   const sched = [];
   for(let i=0;i<morse.length;i++) {

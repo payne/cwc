@@ -504,7 +504,7 @@ function presentRxMove(text) {
   conf.dataset.tr = toRank;   conf.dataset.tf = toFile;
   conf.dataset.move = text.toUpperCase();
   document.getElementById('rxMoveDisp').textContent = text.toUpperCase();
-  conf.style.display = '';
+  conf.style.display = 'block';
   document.getElementById('rxStatus').textContent = 'move received — confirm below';
 }
 

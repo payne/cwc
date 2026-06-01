@@ -51,6 +51,10 @@
   .params { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .param-row { display: flex; flex-direction: column; gap: 4px; }
   .param-val { font-size: 13px; font-weight: 500; text-align: center; color: var(--color-text-primary); }
+  .param-input { width: 60px; padding: 4px 8px; font-size: 13px; font-weight: 500; text-align: center; color: var(--color-text-primary); background: var(--color-background-secondary); border: 0.5px solid var(--color-border-primary); border-radius: var(--border-radius-md); }
+  .param-input:focus { outline: 1px solid #4a90d9; }
+  .param-row-inline { display: flex; align-items: center; gap: 8px; }
+  .param-row-inline input[type=range] { flex: 1; }
   input[type=range] { width: 100%; accent-color: #4a90d9; }
   .btn-row { display: flex; gap: 8px; }
   button {
@@ -215,13 +219,17 @@
       <div class="label" style="margin-bottom:12px">These settings are shared between transmit and receive</div>
       <div class="param-row" style="margin-bottom:16px">
         <label class="label" for="wpmRange">speed (wpm)</label>
-        <input type="range" id="wpmRange" min="5" max="30" value="13" step="1">
-        <div class="param-val" id="wpmVal">13</div>
+        <div class="param-row-inline">
+          <input type="range" id="wpmRange" min="5" max="30" value="13" step="1">
+          <input type="number" id="wpmInput" class="param-input" min="5" max="30" value="13" step="1">
+        </div>
       </div>
       <div class="param-row">
         <label class="label" for="pitchRange">pitch (Hz)</label>
-        <input type="range" id="pitchRange" min="400" max="900" value="600" step="10">
-        <div class="param-val" id="pitchVal">600</div>
+        <div class="param-row-inline">
+          <input type="range" id="pitchRange" min="400" max="900" value="600" step="10">
+          <input type="number" id="pitchInput" class="param-input" min="400" max="900" value="600" step="10">
+        </div>
       </div>
     </div>
   </div>
@@ -1091,13 +1099,22 @@ document.getElementById('btnReset').addEventListener('click', () => {
   document.getElementById('timing').getContext('2d').clearRect(0,0,9999,99);
 });
 
-document.getElementById('wpmRange').addEventListener('input', e =>
-  document.getElementById('wpmVal').textContent = e.target.value
-);
+document.getElementById('wpmRange').addEventListener('input', e => {
+  document.getElementById('wpmInput').value = e.target.value;
+});
+document.getElementById('wpmInput').addEventListener('input', e => {
+  const val = Math.max(5, Math.min(30, +e.target.value || 13));
+  document.getElementById('wpmRange').value = val;
+});
 
 document.getElementById('pitchRange').addEventListener('input', e => {
-  document.getElementById('pitchVal').textContent = e.target.value;
-  if(rxFilter) rxFilter.frequency.value = +e.target.value; // live-update filter
+  document.getElementById('pitchInput').value = e.target.value;
+  if(rxFilter) rxFilter.frequency.value = +e.target.value;
+});
+document.getElementById('pitchInput').addEventListener('input', e => {
+  const val = Math.max(400, Math.min(900, +e.target.value || 600));
+  document.getElementById('pitchRange').value = val;
+  if(rxFilter) rxFilter.frequency.value = val;
 });
 
 document.getElementById('squelchRange').addEventListener('input', e => {

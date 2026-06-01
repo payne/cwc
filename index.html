@@ -3,24 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chess CW Encoder</title>
+  <title>Chess · CW</title>
 </head>
 <body>
 <style>
-  .cw-root { padding: 1rem 0; font-family: var(--font-sans); color: var(--color-text-primary); }
+  :root {
+    --font-sans: system-ui, -apple-system, sans-serif;
+    --font-mono: 'Courier New', monospace;
+    --color-text-primary: #e8e8e8;
+    --color-text-secondary: #9a9a9a;
+    --color-text-tertiary: #606060;
+    --color-background-primary: #1e1e2e;
+    --color-background-secondary: #2a2a3e;
+    --color-border-primary: #444;
+    --color-border-tertiary: #333;
+    --border-radius-lg: 8px;
+    --border-radius-md: 4px;
+  }
+  body { margin: 0; padding: 1rem; background: #111; font-family: var(--font-sans); }
+
+  .cw-root { padding: 1rem 0; color: var(--color-text-primary); }
   .board-wrap { display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; }
   .board { display: grid; grid-template-columns: repeat(8,1fr); width: 280px; min-width: 280px; border: 1.5px solid var(--color-border-primary); border-radius: 4px; overflow: hidden; user-select: none; }
-  .sq { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; position: relative; }
+  .sq { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; }
   .sq.light { background: #f0d9b5; }
   .sq.dark  { background: #b58863; }
   .sq.selected { outline: 3px solid #4a90d9; outline-offset: -3px; }
   .sq.highlight { outline: 3px solid #7bc67e; outline-offset: -3px; }
-  .file-labels { display: flex; width: 280px; padding-left: 0; }
+  .file-labels { display: flex; width: 280px; }
   .file-labels span { width: 35px; text-align: center; font-size: 11px; color: var(--color-text-secondary); }
   .rank-labels { display: flex; flex-direction: column; justify-content: space-around; padding-right: 4px; }
   .rank-labels span { font-size: 11px; color: var(--color-text-secondary); height: 35px; display: flex; align-items: center; }
+
   .controls { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 12px; }
   .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
+  .section-head { font-size: 11px; font-weight: 600; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
   .label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
   .move-display { font-size: 22px; font-weight: 500; font-family: var(--font-mono); letter-spacing: 2px; min-height: 32px; }
   .morse-display { font-size: 14px; font-family: var(--font-mono); color: var(--color-text-secondary); min-height: 20px; word-break: break-all; }
@@ -28,25 +45,54 @@
   canvas#timing { width: 100%; height: 100%; }
   .params { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .param-row { display: flex; flex-direction: column; gap: 4px; }
-  .param-val { font-size: 13px; font-weight: 500; text-align: center; }
-  input[type=range] { width: 100%; }
+  .param-val { font-size: 13px; font-weight: 500; text-align: center; color: var(--color-text-primary); }
+  input[type=range] { width: 100%; accent-color: #4a90d9; }
   .btn-row { display: flex; gap: 8px; }
-  button { flex: 1; }
+  button {
+    flex: 1; padding: 7px 12px;
+    border: 0.5px solid var(--color-border-primary);
+    border-radius: var(--border-radius-md);
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary);
+    cursor: pointer; font-size: 13px;
+  }
+  button:disabled { opacity: 0.35; cursor: default; }
+  button:hover:not(:disabled) { background: #3a3a5a; }
+  button.btn-primary { background: #1e3a5a; border-color: #4a90d9; }
+  button.btn-primary:hover:not(:disabled) { background: #2a4a7a; }
   .history { max-height: 80px; overflow-y: auto; font-family: var(--font-mono); font-size: 12px; color: var(--color-text-secondary); line-height: 1.8; }
   .side-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: var(--border-radius-md); margin-right: 4px; }
   .side-W { background: #f0d9b5; color: #5a3e1b; }
   .side-B { background: #b58863; color: #fff; }
   .status { font-size: 13px; color: var(--color-text-secondary); min-height: 18px; }
-  .led { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--color-background-secondary); margin-right: 6px; vertical-align: middle; transition: background 0.05s; }
-  .led.on { background: #4a90d9; }
+
+  /* LEDs */
+  .led { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #333; margin-right: 6px; vertical-align: middle; transition: background 0.05s; }
+  .led.on { background: #4a90d9; box-shadow: 0 0 6px #4a90d9; }
+  .led-rx { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #333; margin-left: 4px; vertical-align: middle; transition: background 0.05s; }
+  .led-rx.on { background: #4a904a; box-shadow: 0 0 6px #4a904a; }
+
+  /* S-meter */
+  .smeter-wrap { position: relative; height: 10px; background: var(--color-background-secondary); border-radius: 4px; margin: 8px 0 12px; overflow: visible; }
+  .smeter-bar { height: 100%; width: 0%; border-radius: 4px; background: #4a90d9; transition: width 0.04s; }
+  .smeter-bar.rx-on { background: #4a904a; }
+  /* red threshold marker */
+  .smeter-thresh { position: absolute; top: -3px; width: 2px; height: 16px; background: #c04040; border-radius: 1px; pointer-events: none; }
+
+  /* RX decoded display */
+  .rx-decoded { font-family: var(--font-mono); font-size: 16px; color: #4a90d9; min-height: 24px; letter-spacing: 2px; word-break: break-all; }
+
+  /* received move confirm box */
+  .rx-confirm { border: 1px solid #4a904a; border-radius: 6px; padding: 10px 12px; margin-top: 10px; display: none; }
+  .rx-confirm .move-display { color: #7bc67e; }
 </style>
 
 <div class="cw-root">
-  <h2 class="sr-only">Chess move to Morse code encoder — click two squares to make a move, then transmit it as CW audio</h2>
-
   <div class="board-wrap">
+
+    <!-- Board -->
     <div>
-      <div style="display:flex; align-items:flex-start; gap:0;">
+      <div style="display:flex;align-items:flex-start;gap:0">
         <div class="rank-labels" id="rankLabels"></div>
         <div class="board" id="board"></div>
       </div>
@@ -54,15 +100,18 @@
     </div>
 
     <div class="controls">
+
+      <!-- ── TX ─────────────────────────────────────────────────── -->
       <div class="card">
-        <div class="label">current move</div>
+        <div class="section-head">transmit</div>
+        <div class="label">move to send</div>
         <div class="move-display" id="moveDisp">—</div>
         <div class="morse-display" id="morseDisp"></div>
         <div class="timing-wrap"><canvas id="timing"></canvas></div>
       </div>
 
       <div class="card">
-        <div class="label">CW parameters</div>
+        <div class="label">CW parameters (shared TX / RX)</div>
         <div class="params">
           <div class="param-row">
             <label class="label" for="wpmRange">speed (wpm)</label>
@@ -80,11 +129,47 @@
       <div class="card">
         <div class="status"><span class="led" id="led"></span><span id="statusTxt">select a piece to move</span></div>
         <div class="btn-row" style="margin-top:10px">
-          <button id="btnSend" disabled><i class="ti ti-radio" aria-hidden="true"></i> transmit CW</button>
-          <button id="btnReset"><i class="ti ti-refresh" aria-hidden="true"></i> reset</button>
+          <button id="btnSend" disabled class="btn-primary">▶ transmit CW</button>
+          <button id="btnReset">↺ reset board</button>
         </div>
       </div>
 
+      <!-- ── RX ─────────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="section-head">receive <span class="led-rx" id="ledRx"></span></div>
+
+        <div class="btn-row" style="margin-bottom:12px">
+          <button id="btnListen">🎙 listen</button>
+        </div>
+
+        <div class="label">signal level</div>
+        <div class="smeter-wrap">
+          <div class="smeter-bar" id="smeterBar"></div>
+          <div class="smeter-thresh" id="smeterThresh"></div>
+        </div>
+
+        <div class="param-row" style="margin-bottom:12px">
+          <label class="label" for="squelchRange">squelch — red line marks threshold</label>
+          <input type="range" id="squelchRange" min="1" max="100" value="15" step="1">
+          <div class="param-val" id="squelchVal">15</div>
+        </div>
+
+        <div class="label">decoding</div>
+        <div class="rx-decoded" id="rxDecoded">—</div>
+
+        <div id="rxConfirm" class="rx-confirm">
+          <div class="label">received move — apply to board?</div>
+          <div class="move-display" id="rxMoveDisp">—</div>
+          <div class="btn-row" style="margin-top:8px">
+            <button id="btnApply" class="btn-primary">✓ apply</button>
+            <button id="btnDiscard">✗ discard</button>
+          </div>
+        </div>
+
+        <div class="status" style="margin-top:10px"><span id="rxStatus">idle</span></div>
+      </div>
+
+      <!-- ── Log ────────────────────────────────────────────────── -->
       <div class="card">
         <div class="label">move log</div>
         <div class="history" id="history">—</div>
@@ -94,24 +179,28 @@
 </div>
 
 <script>
+// ── Tables ────────────────────────────────────────────────────────────────
 const PIECES = {
   wR:'♖',wN:'♘',wB:'♗',wQ:'♕',wK:'♔',wP:'♙',
   bR:'♜',bN:'♞',bB:'♝',bQ:'♛',bK:'♚',bP:'♟'
 };
 
 const MORSE = {
-  A:'.-', B:'-...', C:'-.-.', D:'-..', E:'.', F:'..-.', G:'--.', H:'....', I:'..', J:'.---',
-  K:'-.-', L:'.-..', M:'--', N:'-.', O:'---', P:'.--.', Q:'--.-', R:'.-.', S:'...', T:'-',
-  U:'..-', V:'...-', W:'.--', X:'-..-', Y:'-.--', Z:'--..',
+  A:'.-',  B:'-...',C:'-.-.',D:'-..',E:'.',  F:'..-.',G:'--.',H:'....',
+  I:'..',  J:'.---',K:'-.-', L:'.-..', M:'--',N:'-.',  O:'---',P:'.--.',
+  Q:'--.-',R:'.-.', S:'...',T:'-',   U:'..-',V:'...-',W:'.--',X:'-..-',
+  Y:'-.--',Z:'--..',
   '0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....',
   '6':'-....','7':'--...','8':'---..','9':'----.'
 };
+const MORSE_REV = Object.fromEntries(Object.entries(MORSE).map(([k,v])=>[v,k]));
 
 function toMorse(text) {
   return text.toUpperCase().split('').map(c => MORSE[c] || '').join(' ');
 }
 
-const initBoard = [
+// ── Board state ───────────────────────────────────────────────────────────
+const INIT_BOARD = [
   ['bR','bN','bB','bQ','bK','bB','bN','bR'],
   ['bP','bP','bP','bP','bP','bP','bP','bP'],
   [null,null,null,null,null,null,null,null],
@@ -122,30 +211,29 @@ const initBoard = [
   ['wR','wN','wB','wQ','wK','wB','wN','wR']
 ];
 
-let board = initBoard.map(r => [...r]);
+let board = INIT_BOARD.map(r=>[...r]);
 let selected = null;
 let turn = 'w';
 let pendingMove = null;
-let history = [];
+let historyLog = [];
 let audioCtx = null;
+let txActive = false;
 
 const files = ['a','b','c','d','e','f','g','h'];
+const squareId = (r,f) => files[f] + (8-r);
 
-function squareId(r,f) { return files[f] + (8-r); }
-
+// ── Board rendering ───────────────────────────────────────────────────────
 function buildBoard() {
   const el = document.getElementById('board');
   el.innerHTML = '';
-  for(let r=0;r<8;r++) {
-    for(let f=0;f<8;f++) {
-      const sq = document.createElement('div');
-      sq.className = 'sq ' + ((r+f)%2===0 ? 'light' : 'dark');
-      sq.dataset.r = r; sq.dataset.f = f;
-      const p = board[r][f];
-      if(p) sq.textContent = PIECES[p];
-      sq.addEventListener('click', onSquareClick);
-      el.appendChild(sq);
-    }
+  for(let r=0;r<8;r++) for(let f=0;f<8;f++) {
+    const sq = document.createElement('div');
+    sq.className = 'sq ' + ((r+f)%2===0 ? 'light':'dark');
+    sq.dataset.r = r; sq.dataset.f = f;
+    const p = board[r][f];
+    if(p) sq.textContent = PIECES[p];
+    sq.addEventListener('click', onSquareClick);
+    el.appendChild(sq);
   }
   const rl = document.getElementById('rankLabels');
   rl.innerHTML = '';
@@ -156,16 +244,24 @@ function buildBoard() {
 }
 
 function clearHighlights() {
-  document.querySelectorAll('.sq').forEach(s => s.classList.remove('selected','highlight'));
+  document.querySelectorAll('.sq').forEach(s=>s.classList.remove('selected','highlight'));
 }
 
+function highlightSquares(...coords) {
+  coords.forEach(([r,f]) => {
+    const sq = document.querySelector(`.sq[data-r="${r}"][data-f="${f}"]`);
+    if(sq) sq.classList.add('highlight');
+  });
+}
+
+// ── TX: click to move ─────────────────────────────────────────────────────
 function onSquareClick(e) {
   const sq = e.currentTarget;
   const r = +sq.dataset.r, f = +sq.dataset.f;
   const piece = board[r][f];
 
   if(!selected) {
-    if(piece && piece[0] === turn) {
+    if(piece && piece[0]===turn) {
       selected = {r,f};
       clearHighlights();
       sq.classList.add('selected');
@@ -176,25 +272,22 @@ function onSquareClick(e) {
       selected=null; clearHighlights(); setStatus('select a piece to move'); return;
     }
     if(piece && piece[0]===turn) {
-      selected={r,f}; clearHighlights(); sq.classList.add('selected'); setStatus('select destination square'); return;
+      selected={r,f}; clearHighlights(); sq.classList.add('selected'); setStatus('select destination'); return;
     }
     const from = squareId(selected.r, selected.f);
     const to   = squareId(r, f);
     const moveStr = turn.toUpperCase() + from + to;
     board[r][f] = board[selected.r][selected.f];
     board[selected.r][selected.f] = null;
-    clearHighlights();
-    sq.classList.add('highlight');
-    document.querySelector(`.sq[data-r="${selected.r}"][data-f="${selected.f}"]`).classList.add('highlight');
-    buildBoard();
-    document.querySelector(`.sq[data-r="${r}"][data-f="${f}"]`).classList.add('highlight');
-    document.querySelector(`.sq[data-r="${selected.r}"][data-f="${selected.f}"]`).classList.add('highlight');
-    pendingMove = {moveStr, turn};
+    const prevSel = {r:selected.r, f:selected.f};
     selected = null;
     turn = turn==='w'?'b':'w';
+    buildBoard();
+    highlightSquares([r,f],[prevSel.r,prevSel.f]);
+    pendingMove = {moveStr, turn: turn==='w'?'b':'w'};
     showMove(moveStr);
     document.getElementById('btnSend').disabled = false;
-    setStatus('ready — click transmit to send CW');
+    setStatus('ready — click Transmit CW');
   }
 }
 
@@ -207,140 +300,350 @@ function showMove(moveStr) {
 
 function drawTiming(morse) {
   const canvas = document.getElementById('timing');
-  const ctx = canvas.getContext('2d');
-  canvas.width = canvas.offsetWidth * devicePixelRatio || 300;
+  const ctx2 = canvas.getContext('2d');
+  canvas.width = (canvas.offsetWidth||300) * devicePixelRatio;
   canvas.height = 40 * devicePixelRatio;
-  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx2.scale(devicePixelRatio, devicePixelRatio);
   const W = canvas.width/devicePixelRatio, H = 40;
-  ctx.clearRect(0,0,W,H);
-  const symbols = morse.replace(/ /g,'').split('');
-  const gaps = morse.split('');
-  const unit = 3;
+  ctx2.clearRect(0,0,W,H);
   const timings = [];
-  let inWord = false;
   for(let i=0;i<morse.length;i++) {
     const ch = morse[i];
-    if(ch==='.') timings.push({on:true,len:1});
-    else if(ch==='-') timings.push({on:true,len:3});
-    else if(ch===' ') {
-      if(i+1<morse.length && morse[i+1]===' ') continue;
-      timings.push({on:false,len:3});
-    }
-    if(i<morse.length-1 && morse[i]!=' ' && morse[i+1]!=' ') timings.push({on:false,len:1});
+    if(ch==='.') { timings.push({on:true,len:1}); if(morse[i+1]&&morse[i+1]!==' ') timings.push({on:false,len:1}); }
+    else if(ch==='-') { timings.push({on:true,len:3}); if(morse[i+1]&&morse[i+1]!==' ') timings.push({on:false,len:1}); }
+    else if(ch===' ' && morse[i+1]===' ') continue;
+    else if(ch===' ') timings.push({on:false,len:2});
   }
   const total = timings.reduce((s,t)=>s+t.len,0)||1;
   let x=0;
   timings.forEach(t => {
-    const w = (t.len/total)*W;
-    ctx.fillStyle = t.on ? '#4a90d9' : 'transparent';
-    if(t.on) ctx.fillRect(x, 8, w-1, H-16);
+    const w=(t.len/total)*W;
+    if(t.on) { ctx2.fillStyle='#4a90d9'; ctx2.fillRect(x,8,w-1,H-16); }
     x+=w;
   });
 }
 
-function setStatus(msg) {
-  document.getElementById('statusTxt').textContent = msg;
-}
+function setStatus(msg) { document.getElementById('statusTxt').textContent = msg; }
 
-function getAudioCtx() {
+// ── Audio context (shared TX/RX) ──────────────────────────────────────────
+function getAC() {
   if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
   return audioCtx;
 }
 
+// ── TX: transmit CW ───────────────────────────────────────────────────────
 async function transmitCW() {
-  if(!pendingMove) return;
+  if(!pendingMove || txActive) return;
   const wpm = +document.getElementById('wpmRange').value;
   const pitch = +document.getElementById('pitchRange').value;
   const morse = toMorse(pendingMove.moveStr);
-  const dotMs = 1200/wpm;
+  const dot = 1200/wpm;
   const led = document.getElementById('led');
   const btn = document.getElementById('btnSend');
-  btn.disabled = true;
-  btn.textContent = 'transmitting...';
-  setStatus('🔊 transmitting: ' + pendingMove.moveStr);
+  btn.disabled = true; btn.textContent = '● transmitting…';
+  setStatus('transmitting: ' + pendingMove.moveStr);
+  txActive = true;
 
-  const ac = getAudioCtx();
+  const ac = getAC();
   let t = ac.currentTime + 0.05;
-
-  const schedule = [];
+  const sched = [];
   for(let i=0;i<morse.length;i++) {
     const ch = morse[i];
-    if(ch==='.') { schedule.push({on:true,ms:dotMs}); schedule.push({on:false,ms:dotMs}); }
-    else if(ch==='-') { schedule.push({on:true,ms:3*dotMs}); schedule.push({on:false,ms:dotMs}); }
-    else if(ch===' ') { schedule.push({on:false,ms:2*dotMs}); }
+    if(ch==='.') { sched.push({on:true,ms:dot}); sched.push({on:false,ms:dot}); }
+    else if(ch==='-') { sched.push({on:true,ms:3*dot}); sched.push({on:false,ms:dot}); }
+    else if(ch===' ') { sched.push({on:false,ms:2*dot}); }
   }
-  schedule.push({on:false,ms:7*dotMs});
+  sched.push({on:false,ms:7*dot});
 
   const ledTimes = [];
   let tt = t;
-  schedule.forEach(s => {
+  sched.forEach(s => {
     if(s.on) {
-      const osc = ac.createOscillator();
-      const gain = ac.createGain();
-      osc.frequency.value = pitch;
-      osc.type = 'sine';
+      const osc = ac.createOscillator(), gain = ac.createGain();
+      osc.frequency.value = pitch; osc.type = 'sine';
       gain.gain.setValueAtTime(0, tt);
-      gain.gain.linearRampToValueAtTime(0.4, tt+0.005);
-      gain.gain.setValueAtTime(0.4, tt + s.ms/1000 - 0.005);
-      gain.gain.linearRampToValueAtTime(0, tt + s.ms/1000);
+      gain.gain.linearRampToValueAtTime(0.5, tt+0.005);
+      gain.gain.setValueAtTime(0.5, tt+s.ms/1000-0.005);
+      gain.gain.linearRampToValueAtTime(0, tt+s.ms/1000);
       osc.connect(gain); gain.connect(ac.destination);
-      osc.start(tt); osc.stop(tt + s.ms/1000 + 0.01);
-      ledTimes.push({start: tt, end: tt + s.ms/1000});
+      osc.start(tt); osc.stop(tt+s.ms/1000+0.01);
+      ledTimes.push({start:tt, end:tt+s.ms/1000});
     }
     tt += s.ms/1000;
   });
 
-  const totalMs = (tt - t) * 1000;
-  let rafId;
   const animLed = () => {
     const now = ac.currentTime;
-    const isOn = ledTimes.some(l => now >= l.start && now <= l.end);
-    led.className = 'led' + (isOn ? ' on' : '');
-    if(now < tt) rafId = requestAnimationFrame(animLed);
+    const isOn = ledTimes.some(l=>now>=l.start&&now<=l.end);
+    led.className = 'led' + (isOn?' on':'');
+    if(now < tt) requestAnimationFrame(animLed);
     else {
       led.className = 'led';
-      btn.disabled = false;
-      btn.innerHTML = '<i class="ti ti-radio" aria-hidden="true"></i> transmit CW';
+      btn.disabled = false; btn.textContent = '▶ transmit CW';
       setStatus('transmitted — select next move');
       addHistory(pendingMove);
       pendingMove = null;
+      txActive = false;
     }
   };
   animLed();
 }
 
 function addHistory(move) {
-  history.push(move);
+  historyLog.push(move);
   const el = document.getElementById('history');
-  el.innerHTML = history.map((m,i) => {
-    const sideClass = 'side-' + m.turn.toUpperCase();
-    return `<span class="side-badge ${sideClass}">${m.turn.toUpperCase()}</span>${m.moveStr} <span style="color:var(--color-text-tertiary)">${toMorse(m.moveStr)}</span>`;
-  }).join('<br>');
+  el.innerHTML = historyLog.map(m =>
+    `<span class="side-badge side-${m.turn.toUpperCase()}">${m.turn.toUpperCase()}</span>` +
+    `${m.moveStr} <span style="color:var(--color-text-tertiary)">${toMorse(m.moveStr)}</span>`
+  ).join('<br>');
   el.scrollTop = el.scrollHeight;
 }
 
+// ── RX: state ─────────────────────────────────────────────────────────────
+let rxActive = false;
+let rxStream = null, rxSource = null, rxFilter = null, rxProc = null, rxSink = null;
+
+// Decoder state machine
+let rxToneOn = false;
+let rxToneOnAt = -1;   // performance.now() when tone started (-1 = never)
+let rxToneOffAt = -1;  // performance.now() when tone ended  (-1 = never)
+let rxSymbols = [];    // '.' / '-' for current character
+let rxWord = '';       // characters decoded so far in current transmission
+let rxEndTimer = null;
+let rxDispLevel = 0;   // smoothed level for S-meter display
+let rxDetLevel = 0;    // fast-response level for detection
+
+function getRxUnit() { return 1200 / (+document.getElementById('wpmRange').value); }
+
+// Squelch: slider 1–100 maps to threshold 0.0005–0.05
+// S-meter display max = 0.05, so threshold% == slider value (clean alignment)
+function getThreshold() { return +document.getElementById('squelchRange').value / 2000; }
+
+function rxToneStarted(now) {
+  if(rxEndTimer) { clearTimeout(rxEndTimer); rxEndTimer = null; }
+
+  // Classify the gap since last tone ended
+  if(rxToneOffAt >= 0) {
+    const gap = now - rxToneOffAt;
+    const unit = getRxUnit();
+    if     (gap >= 5*unit) { rxFlushChar(); rxFlushWord(); }
+    else if(gap >= 2*unit) { rxFlushChar(); }
+    // else inter-element gap — do nothing
+  }
+
+  rxToneOn = true;
+  rxToneOnAt = now;
+  document.getElementById('ledRx').className = 'led-rx on';
+}
+
+function rxToneEnded(now) {
+  rxToneOn = false;
+  rxToneOffAt = now;
+  document.getElementById('ledRx').className = 'led-rx';
+
+  if(rxToneOnAt >= 0) {
+    const dur = now - rxToneOnAt;
+    const unit = getRxUnit();
+    rxSymbols.push(dur >= 2*unit ? '-' : '.');
+    updateRxDisplay();
+  }
+
+  // If silence persists for a word gap, flush
+  const wordGapMs = Math.max(5 * getRxUnit(), 400);
+  if(rxEndTimer) clearTimeout(rxEndTimer);
+  rxEndTimer = setTimeout(() => { rxFlushChar(); rxFlushWord(); }, wordGapMs);
+}
+
+function rxFlushChar() {
+  if(rxSymbols.length === 0) return;
+  rxWord += (MORSE_REV[rxSymbols.join('')] || '?');
+  rxSymbols = [];
+  updateRxDisplay();
+}
+
+function rxFlushWord() {
+  if(rxWord.length === 0) return;
+  const w = rxWord;
+  rxWord = ''; rxSymbols = [];
+  updateRxDisplay();
+  presentRxMove(w);
+}
+
+function updateRxDisplay() {
+  const sym = rxSymbols.join('');
+  const txt = rxWord + (sym ? '['+sym+']' : '');
+  document.getElementById('rxDecoded').textContent = txt || '—';
+}
+
+// ── RX: move application ──────────────────────────────────────────────────
+function presentRxMove(text) {
+  // Format: [W|B][a-h][1-8][a-h][1-8]  e.g.  We2e4
+  const m = text.toUpperCase().match(/^([WB])([A-H])([1-8])([A-H])([1-8])$/);
+  if(!m) {
+    document.getElementById('rxStatus').textContent = 'rx: "'+text+'" — not a valid move format';
+    return;
+  }
+  const fromFile = m[2].charCodeAt(0)-65;   // A=0 … H=7
+  const fromRank = 8 - parseInt(m[3]);       // rank→row (rank 8 = row 0)
+  const toFile   = m[4].charCodeAt(0)-65;
+  const toRank   = 8 - parseInt(m[5]);
+  const conf = document.getElementById('rxConfirm');
+  conf.dataset.fr = fromRank; conf.dataset.ff = fromFile;
+  conf.dataset.tr = toRank;   conf.dataset.tf = toFile;
+  conf.dataset.move = text.toUpperCase();
+  document.getElementById('rxMoveDisp').textContent = text.toUpperCase();
+  conf.style.display = '';
+  document.getElementById('rxStatus').textContent = 'move received — confirm below';
+}
+
+function applyRxMove() {
+  const conf = document.getElementById('rxConfirm');
+  const fr=+conf.dataset.fr, ff=+conf.dataset.ff;
+  const tr=+conf.dataset.tr, tf=+conf.dataset.tf;
+  const moveStr = conf.dataset.move;
+  const side = moveStr[0]; // 'W' or 'B'
+  conf.style.display = 'none';
+
+  const piece = board[fr][ff];
+  if(!piece) {
+    document.getElementById('rxStatus').textContent = 'error: no piece at '+files[ff]+(8-fr);
+    return;
+  }
+  board[tr][tf] = piece;
+  board[fr][ff] = null;
+  turn = side==='W' ? 'b' : 'w';
+  buildBoard();
+  highlightSquares([tr,tf],[fr,ff]);
+  addHistory({moveStr, turn: side.toLowerCase()});
+  document.getElementById('rxStatus').textContent = 'applied: '+moveStr;
+  document.getElementById('rxDecoded').textContent = '—';
+}
+
+// ── RX: audio pipeline ────────────────────────────────────────────────────
+function processMicBuffer(samples) {
+  // RMS of this buffer
+  let sum=0;
+  for(let i=0;i<samples.length;i++) sum+=samples[i]*samples[i];
+  const rms = Math.sqrt(sum/samples.length);
+
+  // Two smoothing levels: fast for detection, slow for display
+  rxDetLevel  = rxDetLevel  * 0.4 + rms * 0.6;   // ~fast response
+  rxDispLevel = rxDispLevel * 0.75 + rms * 0.25;  // ~slower for meter
+
+  // S-meter (0.05 RMS = full scale)
+  const pct = Math.min(100, rxDispLevel / 0.05 * 100);
+  const bar = document.getElementById('smeterBar');
+  bar.style.width = pct + '%';
+  bar.className = 'smeter-bar' + (rxDetLevel > getThreshold() ? ' rx-on' : '');
+
+  if(txActive) return; // ignore mic during our own TX (prevent loopback decode)
+
+  const now = performance.now();
+  const above = rxDetLevel > getThreshold();
+  if(above  && !rxToneOn) rxToneStarted(now);
+  if(!above &&  rxToneOn) rxToneEnded(now);
+}
+
+async function startRX() {
+  if(rxActive) { stopRX(); return; }
+  const ac = getAC();
+  try {
+    rxStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false },
+      video: false
+    });
+  } catch(err) {
+    document.getElementById('rxStatus').textContent = 'mic error: ' + err.message;
+    return;
+  }
+
+  rxSource = ac.createMediaStreamSource(rxStream);
+
+  // Bandpass filter centred on the configured CW pitch
+  rxFilter = ac.createBiquadFilter();
+  rxFilter.type = 'bandpass';
+  rxFilter.frequency.value = +document.getElementById('pitchRange').value;
+  rxFilter.Q.value = 15;  // fairly selective; adjusts with pitch slider
+
+  // ScriptProcessor drives the decoder (runs on main thread, fine for this use)
+  rxProc = ac.createScriptProcessor(512, 1, 1);
+  rxProc.onaudioprocess = e => processMicBuffer(e.inputBuffer.getChannelData(0));
+
+  // Silent output — processor must be in the graph to fire callbacks
+  rxSink = ac.createGain();
+  rxSink.gain.value = 0;
+
+  rxSource.connect(rxFilter);
+  rxFilter.connect(rxProc);
+  rxProc.connect(rxSink);
+  rxSink.connect(ac.destination);
+
+  rxActive = true;
+  document.getElementById('btnListen').textContent = '⏹ stop listening';
+  document.getElementById('rxStatus').textContent = 'listening — raise squelch above noise floor';
+}
+
+function stopRX() {
+  if(rxEndTimer) { clearTimeout(rxEndTimer); rxEndTimer = null; }
+  [rxProc, rxFilter, rxSink, rxSource].forEach(n => { try{ if(n) n.disconnect(); }catch(_){} });
+  rxProc=rxFilter=rxSink=rxSource=null;
+  if(rxStream) { rxStream.getTracks().forEach(t=>t.stop()); rxStream=null; }
+  rxActive=false; rxToneOn=false; rxToneOnAt=rxToneOffAt=-1;
+  rxSymbols=[]; rxWord='';
+  rxDetLevel=rxDispLevel=0;
+  document.getElementById('btnListen').textContent = '🎙 listen';
+  document.getElementById('rxStatus').textContent = 'idle';
+  document.getElementById('smeterBar').style.width = '0%';
+  document.getElementById('smeterBar').className = 'smeter-bar';
+  document.getElementById('ledRx').className = 'led-rx';
+}
+
+function updateSquelchMarker() {
+  // threshold% == slider value (by design of the scaling)
+  document.getElementById('smeterThresh').style.left =
+    document.getElementById('squelchRange').value + '%';
+}
+
+// ── Event wiring ──────────────────────────────────────────────────────────
 document.getElementById('btnSend').addEventListener('click', transmitCW);
+
 document.getElementById('btnReset').addEventListener('click', () => {
-  board = initBoard.map(r=>[...r]);
-  selected=null; turn='w'; pendingMove=null; history=[];
+  board = INIT_BOARD.map(r=>[...r]);
+  selected=null; turn='w'; pendingMove=null; historyLog=[];
   buildBoard();
   document.getElementById('moveDisp').textContent='—';
   document.getElementById('morseDisp').textContent='';
   document.getElementById('history').textContent='—';
   document.getElementById('btnSend').disabled=true;
+  document.getElementById('rxConfirm').style.display='none';
   setStatus('select a piece to move');
-  const ctx=document.getElementById('timing').getContext('2d');
-  ctx.clearRect(0,0,999,99);
+  document.getElementById('timing').getContext('2d').clearRect(0,0,9999,99);
 });
 
-document.getElementById('wpmRange').addEventListener('input',e=>{
-  document.getElementById('wpmVal').textContent=e.target.value;
-});
-document.getElementById('pitchRange').addEventListener('input',e=>{
-  document.getElementById('pitchVal').textContent=e.target.value;
+document.getElementById('wpmRange').addEventListener('input', e =>
+  document.getElementById('wpmVal').textContent = e.target.value
+);
+
+document.getElementById('pitchRange').addEventListener('input', e => {
+  document.getElementById('pitchVal').textContent = e.target.value;
+  if(rxFilter) rxFilter.frequency.value = +e.target.value; // live-update filter
 });
 
+document.getElementById('squelchRange').addEventListener('input', e => {
+  document.getElementById('squelchVal').textContent = e.target.value;
+  updateSquelchMarker();
+});
+
+document.getElementById('btnListen').addEventListener('click', startRX);
+document.getElementById('btnApply').addEventListener('click', applyRxMove);
+document.getElementById('btnDiscard').addEventListener('click', () => {
+  document.getElementById('rxConfirm').style.display = 'none';
+  document.getElementById('rxStatus').textContent = 'discarded';
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
 buildBoard();
+updateSquelchMarker();
 </script>
 </body>
 </html>

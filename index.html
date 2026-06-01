@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chess CW Encoder</title>
+</head>
+<body>
+<style>
+  .cw-root { padding: 1rem 0; font-family: var(--font-sans); color: var(--color-text-primary); }
+  .board-wrap { display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; }
+  .board { display: grid; grid-template-columns: repeat(8,1fr); width: 280px; min-width: 280px; border: 1.5px solid var(--color-border-primary); border-radius: 4px; overflow: hidden; user-select: none; }
+  .sq { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; position: relative; }
+  .sq.light { background: #f0d9b5; }
+  .sq.dark  { background: #b58863; }
+  .sq.selected { outline: 3px solid #4a90d9; outline-offset: -3px; }
+  .sq.highlight { outline: 3px solid #7bc67e; outline-offset: -3px; }
+  .file-labels { display: flex; width: 280px; padding-left: 0; }
+  .file-labels span { width: 35px; text-align: center; font-size: 11px; color: var(--color-text-secondary); }
+  .rank-labels { display: flex; flex-direction: column; justify-content: space-around; padding-right: 4px; }
+  .rank-labels span { font-size: 11px; color: var(--color-text-secondary); height: 35px; display: flex; align-items: center; }
+  .controls { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 12px; }
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
+  .label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+  .move-display { font-size: 22px; font-weight: 500; font-family: var(--font-mono); letter-spacing: 2px; min-height: 32px; }
+  .morse-display { font-size: 14px; font-family: var(--font-mono); color: var(--color-text-secondary); min-height: 20px; word-break: break-all; }
+  .timing-wrap { height: 40px; background: var(--color-background-secondary); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  canvas#timing { width: 100%; height: 100%; }
+  .params { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .param-row { display: flex; flex-direction: column; gap: 4px; }
+  .param-val { font-size: 13px; font-weight: 500; text-align: center; }
+  input[type=range] { width: 100%; }
+  .btn-row { display: flex; gap: 8px; }
+  button { flex: 1; }
+  .history { max-height: 80px; overflow-y: auto; font-family: var(--font-mono); font-size: 12px; color: var(--color-text-secondary); line-height: 1.8; }
+  .side-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: var(--border-radius-md); margin-right: 4px; }
+  .side-W { background: #f0d9b5; color: #5a3e1b; }
+  .side-B { background: #b58863; color: #fff; }
+  .status { font-size: 13px; color: var(--color-text-secondary); min-height: 18px; }
+  .led { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--color-background-secondary); margin-right: 6px; vertical-align: middle; transition: background 0.05s; }
+  .led.on { background: #4a90d9; }
+</style>
+
+<div class="cw-root">
+  <h2 class="sr-only">Chess move to Morse code encoder — click two squares to make a move, then transmit it as CW audio</h2>
+
+  <div class="board-wrap">
+    <div>
+      <div style="display:flex; align-items:flex-start; gap:0;">
+        <div class="rank-labels" id="rankLabels"></div>
+        <div class="board" id="board"></div>
+      </div>
+      <div style="margin-left:20px"><div class="file-labels" id="fileLabels"></div></div>
+    </div>
+
+    <div class="controls">
+      <div class="card">
+        <div class="label">current move</div>
+        <div class="move-display" id="moveDisp">—</div>
+        <div class="morse-display" id="morseDisp"></div>
+        <div class="timing-wrap"><canvas id="timing"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="label">CW parameters</div>
+        <div class="params">
+          <div class="param-row">
+            <label class="label" for="wpmRange">speed (wpm)</label>
+            <input type="range" id="wpmRange" min="5" max="30" value="13" step="1">
+            <div class="param-val" id="wpmVal">13</div>
+          </div>
+          <div class="param-row">
+            <label class="label" for="pitchRange">pitch (Hz)</label>
+            <input type="range" id="pitchRange" min="400" max="900" value="600" step="10">
+            <div class="param-val" id="pitchVal">600</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="status"><span class="led" id="led"></span><span id="statusTxt">select a piece to move</span></div>
+        <div class="btn-row" style="margin-top:10px">
+          <button id="btnSend" disabled><i class="ti ti-radio" aria-hidden="true"></i> transmit CW</button>
+          <button id="btnReset"><i class="ti ti-refresh" aria-hidden="true"></i> reset</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">move log</div>
+        <div class="history" id="history">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PIECES = {
+  wR:'♖',wN:'♘',wB:'♗',wQ:'♕',wK:'♔',wP:'♙',
+  bR:'♜',bN:'♞',bB:'♝',bQ:'♛',bK:'♚',bP:'♟'
+};
+
+const MORSE = {
+  A:'.-', B:'-...', C:'-.-.', D:'-..', E:'.', F:'..-.', G:'--.', H:'....', I:'..', J:'.---',
+  K:'-.-', L:'.-..', M:'--', N:'-.', O:'---', P:'.--.', Q:'--.-', R:'.-.', S:'...', T:'-',
+  U:'..-', V:'...-', W:'.--', X:'-..-', Y:'-.--', Z:'--..',
+  '0':'-----','1':'.----','2':'..---','3':'...--','4':'....-','5':'.....',
+  '6':'-....','7':'--...','8':'---..','9':'----.'
+};
+
+function toMorse(text) {
+  return text.toUpperCase().split('').map(c => MORSE[c] || '').join(' ');
+}
+
+const initBoard = [
+  ['bR','bN','bB','bQ','bK','bB','bN','bR'],
+  ['bP','bP','bP','bP','bP','bP','bP','bP'],
+  [null,null,null,null,null,null,null,null],
+  [null,null,null,null,null,null,null,null],
+  [null,null,null,null,null,null,null,null],
+  [null,null,null,null,null,null,null,null],
+  ['wP','wP','wP','wP','wP','wP','wP','wP'],
+  ['wR','wN','wB','wQ','wK','wB','wN','wR']
+];
+
+let board = initBoard.map(r => [...r]);
+let selected = null;
+let turn = 'w';
+let pendingMove = null;
+let history = [];
+let audioCtx = null;
+
+const files = ['a','b','c','d','e','f','g','h'];
+
+function squareId(r,f) { return files[f] + (8-r); }
+
+function buildBoard() {
+  const el = document.getElementById('board');
+  el.innerHTML = '';
+  for(let r=0;r<8;r++) {
+    for(let f=0;f<8;f++) {
+      const sq = document.createElement('div');
+      sq.className = 'sq ' + ((r+f)%2===0 ? 'light' : 'dark');
+      sq.dataset.r = r; sq.dataset.f = f;
+      const p = board[r][f];
+      if(p) sq.textContent = PIECES[p];
+      sq.addEventListener('click', onSquareClick);
+      el.appendChild(sq);
+    }
+  }
+  const rl = document.getElementById('rankLabels');
+  rl.innerHTML = '';
+  for(let r=0;r<8;r++) { const s=document.createElement('span'); s.textContent=8-r; rl.appendChild(s); }
+  const fl = document.getElementById('fileLabels');
+  fl.innerHTML = '';
+  files.forEach(f => { const s=document.createElement('span'); s.textContent=f; fl.appendChild(s); });
+}
+
+function clearHighlights() {
+  document.querySelectorAll('.sq').forEach(s => s.classList.remove('selected','highlight'));
+}
+
+function onSquareClick(e) {
+  const sq = e.currentTarget;
+  const r = +sq.dataset.r, f = +sq.dataset.f;
+  const piece = board[r][f];
+
+  if(!selected) {
+    if(piece && piece[0] === turn) {
+      selected = {r,f};
+      clearHighlights();
+      sq.classList.add('selected');
+      setStatus('select destination square');
+    }
+  } else {
+    if(selected.r===r && selected.f===f) {
+      selected=null; clearHighlights(); setStatus('select a piece to move'); return;
+    }
+    if(piece && piece[0]===turn) {
+      selected={r,f}; clearHighlights(); sq.classList.add('selected'); setStatus('select destination square'); return;
+    }
+    const from = squareId(selected.r, selected.f);
+    const to   = squareId(r, f);
+    const moveStr = turn.toUpperCase() + from + to;
+    board[r][f] = board[selected.r][selected.f];
+    board[selected.r][selected.f] = null;
+    clearHighlights();
+    sq.classList.add('highlight');
+    document.querySelector(`.sq[data-r="${selected.r}"][data-f="${selected.f}"]`).classList.add('highlight');
+    buildBoard();
+    document.querySelector(`.sq[data-r="${r}"][data-f="${f}"]`).classList.add('highlight');
+    document.querySelector(`.sq[data-r="${selected.r}"][data-f="${selected.f}"]`).classList.add('highlight');
+    pendingMove = {moveStr, turn};
+    selected = null;
+    turn = turn==='w'?'b':'w';
+    showMove(moveStr);
+    document.getElementById('btnSend').disabled = false;
+    setStatus('ready — click transmit to send CW');
+  }
+}
+
+function showMove(moveStr) {
+  document.getElementById('moveDisp').textContent = moveStr;
+  const morse = toMorse(moveStr);
+  document.getElementById('morseDisp').textContent = morse;
+  drawTiming(morse);
+}
+
+function drawTiming(morse) {
+  const canvas = document.getElementById('timing');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * devicePixelRatio || 300;
+  canvas.height = 40 * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.width/devicePixelRatio, H = 40;
+  ctx.clearRect(0,0,W,H);
+  const symbols = morse.replace(/ /g,'').split('');
+  const gaps = morse.split('');
+  const unit = 3;
+  const timings = [];
+  let inWord = false;
+  for(let i=0;i<morse.length;i++) {
+    const ch = morse[i];
+    if(ch==='.') timings.push({on:true,len:1});
+    else if(ch==='-') timings.push({on:true,len:3});
+    else if(ch===' ') {
+      if(i+1<morse.length && morse[i+1]===' ') continue;
+      timings.push({on:false,len:3});
+    }
+    if(i<morse.length-1 && morse[i]!=' ' && morse[i+1]!=' ') timings.push({on:false,len:1});
+  }
+  const total = timings.reduce((s,t)=>s+t.len,0)||1;
+  let x=0;
+  timings.forEach(t => {
+    const w = (t.len/total)*W;
+    ctx.fillStyle = t.on ? '#4a90d9' : 'transparent';
+    if(t.on) ctx.fillRect(x, 8, w-1, H-16);
+    x+=w;
+  });
+}
+
+function setStatus(msg) {
+  document.getElementById('statusTxt').textContent = msg;
+}
+
+function getAudioCtx() {
+  if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  return audioCtx;
+}
+
+async function transmitCW() {
+  if(!pendingMove) return;
+  const wpm = +document.getElementById('wpmRange').value;
+  const pitch = +document.getElementById('pitchRange').value;
+  const morse = toMorse(pendingMove.moveStr);
+  const dotMs = 1200/wpm;
+  const led = document.getElementById('led');
+  const btn = document.getElementById('btnSend');
+  btn.disabled = true;
+  btn.textContent = 'transmitting...';
+  setStatus('🔊 transmitting: ' + pendingMove.moveStr);
+
+  const ac = getAudioCtx();
+  let t = ac.currentTime + 0.05;
+
+  const schedule = [];
+  for(let i=0;i<morse.length;i++) {
+    const ch = morse[i];
+    if(ch==='.') { schedule.push({on:true,ms:dotMs}); schedule.push({on:false,ms:dotMs}); }
+    else if(ch==='-') { schedule.push({on:true,ms:3*dotMs}); schedule.push({on:false,ms:dotMs}); }
+    else if(ch===' ') { schedule.push({on:false,ms:2*dotMs}); }
+  }
+  schedule.push({on:false,ms:7*dotMs});
+
+  const ledTimes = [];
+  let tt = t;
+  schedule.forEach(s => {
+    if(s.on) {
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.frequency.value = pitch;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0, tt);
+      gain.gain.linearRampToValueAtTime(0.4, tt+0.005);
+      gain.gain.setValueAtTime(0.4, tt + s.ms/1000 - 0.005);
+      gain.gain.linearRampToValueAtTime(0, tt + s.ms/1000);
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.start(tt); osc.stop(tt + s.ms/1000 + 0.01);
+      ledTimes.push({start: tt, end: tt + s.ms/1000});
+    }
+    tt += s.ms/1000;
+  });
+
+  const totalMs = (tt - t) * 1000;
+  let rafId;
+  const animLed = () => {
+    const now = ac.currentTime;
+    const isOn = ledTimes.some(l => now >= l.start && now <= l.end);
+    led.className = 'led' + (isOn ? ' on' : '');
+    if(now < tt) rafId = requestAnimationFrame(animLed);
+    else {
+      led.className = 'led';
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-radio" aria-hidden="true"></i> transmit CW';
+      setStatus('transmitted — select next move');
+      addHistory(pendingMove);
+      pendingMove = null;
+    }
+  };
+  animLed();
+}
+
+function addHistory(move) {
+  history.push(move);
+  const el = document.getElementById('history');
+  el.innerHTML = history.map((m,i) => {
+    const sideClass = 'side-' + m.turn.toUpperCase();
+    return `<span class="side-badge ${sideClass}">${m.turn.toUpperCase()}</span>${m.moveStr} <span style="color:var(--color-text-tertiary)">${toMorse(m.moveStr)}</span>`;
+  }).join('<br>');
+  el.scrollTop = el.scrollHeight;
+}
+
+document.getElementById('btnSend').addEventListener('click', transmitCW);
+document.getElementById('btnReset').addEventListener('click', () => {
+  board = initBoard.map(r=>[...r]);
+  selected=null; turn='w'; pendingMove=null; history=[];
+  buildBoard();
+  document.getElementById('moveDisp').textContent='—';
+  document.getElementById('morseDisp').textContent='';
+  document.getElementById('history').textContent='—';
+  document.getElementById('btnSend').disabled=true;
+  setStatus('select a piece to move');
+  const ctx=document.getElementById('timing').getContext('2d');
+  ctx.clearRect(0,0,999,99);
+});
+
+document.getElementById('wpmRange').addEventListener('input',e=>{
+  document.getElementById('wpmVal').textContent=e.target.value;
+});
+document.getElementById('pitchRange').addEventListener('input',e=>{
+  document.getElementById('pitchVal').textContent=e.target.value;
+});
+
+buildBoard();
+</script>
+</body>
+</html>

@@ -90,21 +90,66 @@
   /* received move confirm box */
   .rx-confirm { border: 1px solid #4a904a; border-radius: 6px; padding: 10px 12px; margin-top: 10px; display: none; }
   .rx-confirm .move-display { color: #7bc67e; }
+
+  /* Hamburger menu */
+  .header { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+  .hamburger { background: none; border: none; cursor: pointer; padding: 8px; flex: none; }
+  .hamburger span { display: block; width: 22px; height: 2px; background: var(--color-text-primary); margin: 5px 0; transition: 0.2s; }
+  .hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+  .hamburger.open span:nth-child(2) { opacity: 0; }
+  .hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+  .header-title { font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
+
+  /* Nav menu */
+  .nav-menu { display: none; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 8px 0; margin-bottom: 1rem; }
+  .nav-menu.open { display: block; }
+  .nav-item { display: block; width: 100%; padding: 10px 16px; background: none; border: none; color: var(--color-text-secondary); font-size: 13px; text-align: left; cursor: pointer; }
+  .nav-item:hover { background: var(--color-background-secondary); color: var(--color-text-primary); }
+  .nav-item.active { color: #4a90d9; font-weight: 500; }
+
+  /* Screen visibility */
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .screen-board .board-wrap { display: flex; }
+
+  /* Full-width screens */
+  .screen-params, .screen-log { max-width: 400px; }
+  .screen-params .card, .screen-log .card { margin-bottom: 12px; }
+
+  /* Log screen enhancements */
+  .screen-log .history { max-height: none; overflow-y: visible; }
+  .log-empty { color: var(--color-text-tertiary); font-style: italic; }
 </style>
 
 <div class="cw-root">
-  <div class="board-wrap">
+  <!-- Header with hamburger -->
+  <div class="header">
+    <button class="hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="header-title">Chess · CW</div>
+  </div>
 
-    <!-- Board -->
-    <div>
-      <div style="display:flex;align-items:flex-start;gap:0">
-        <div class="rank-labels" id="rankLabels"></div>
-        <div class="board" id="board"></div>
+  <!-- Navigation menu -->
+  <nav class="nav-menu" id="navMenu">
+    <button class="nav-item active" data-screen="board">♟ Board</button>
+    <button class="nav-item" data-screen="params">⚙ CW Parameters</button>
+    <button class="nav-item" data-screen="log">📋 Move Log</button>
+  </nav>
+
+  <!-- Screen: Board (default) -->
+  <div class="screen screen-board active" id="screenBoard">
+    <div class="board-wrap">
+      <!-- Board -->
+      <div>
+        <div style="display:flex;align-items:flex-start;gap:0">
+          <div class="rank-labels" id="rankLabels"></div>
+          <div class="board" id="board"></div>
+        </div>
+        <div style="margin-left:20px"><div class="file-labels" id="fileLabels"></div></div>
       </div>
-      <div style="margin-left:20px"><div class="file-labels" id="fileLabels"></div></div>
-    </div>
 
-    <div class="controls">
+      <div class="controls">
 
       <!-- ── TX ─────────────────────────────────────────────────── -->
       <div class="card">
@@ -113,22 +158,6 @@
         <div class="move-display" id="moveDisp">—</div>
         <div class="morse-display" id="morseDisp"></div>
         <div class="timing-wrap"><canvas id="timing"></canvas></div>
-      </div>
-
-      <div class="card">
-        <div class="label">CW parameters (shared TX / RX)</div>
-        <div class="params">
-          <div class="param-row">
-            <label class="label" for="wpmRange">speed (wpm)</label>
-            <input type="range" id="wpmRange" min="5" max="30" value="13" step="1">
-            <div class="param-val" id="wpmVal">13</div>
-          </div>
-          <div class="param-row">
-            <label class="label" for="pitchRange">pitch (Hz)</label>
-            <input type="range" id="pitchRange" min="400" max="900" value="600" step="10">
-            <div class="param-val" id="pitchVal">600</div>
-          </div>
-        </div>
       </div>
 
       <div class="card">
@@ -148,16 +177,16 @@
           <button id="btnListen">🎙 listen</button>
         </div>
 
-        <div class="label">signal level</div>
+        <div class="param-row" style="margin-bottom:12px">
+          <label class="label" for="squelchRange">squelch threshold</label>
+          <input type="range" id="squelchRange" min="1" max="100" value="15" step="1">
+          <div class="param-val" id="squelchVal">15</div>
+        </div>
+
+        <div class="label">signal level <span style="font-size:10px;color:var(--color-text-tertiary)">(red line = squelch)</span></div>
         <div class="smeter-wrap">
           <div class="smeter-bar" id="smeterBar"></div>
           <div class="smeter-thresh" id="smeterThresh"></div>
-        </div>
-
-        <div class="param-row" style="margin-bottom:12px">
-          <label class="label" for="squelchRange">squelch — red line marks threshold</label>
-          <input type="range" id="squelchRange" min="1" max="100" value="15" step="1">
-          <div class="param-val" id="squelchVal">15</div>
         </div>
 
         <div class="label">decoding</div>
@@ -175,11 +204,33 @@
         <div class="status" style="margin-top:10px"><span id="rxStatus">idle</span></div>
       </div>
 
-      <!-- ── Log ────────────────────────────────────────────────── -->
-      <div class="card">
-        <div class="label">move log</div>
-        <div class="history" id="history">—</div>
+    </div>
+    </div>
+  </div>
+
+  <!-- Screen: CW Parameters -->
+  <div class="screen screen-params" id="screenParams">
+    <div class="card">
+      <div class="section-head">CW Parameters</div>
+      <div class="label" style="margin-bottom:12px">These settings are shared between transmit and receive</div>
+      <div class="param-row" style="margin-bottom:16px">
+        <label class="label" for="wpmRange">speed (wpm)</label>
+        <input type="range" id="wpmRange" min="5" max="30" value="13" step="1">
+        <div class="param-val" id="wpmVal">13</div>
       </div>
+      <div class="param-row">
+        <label class="label" for="pitchRange">pitch (Hz)</label>
+        <input type="range" id="pitchRange" min="400" max="900" value="600" step="10">
+        <div class="param-val" id="pitchVal">600</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen: Move Log -->
+  <div class="screen screen-log" id="screenLog">
+    <div class="card">
+      <div class="section-head">Move Log</div>
+      <div class="history" id="history"><span class="log-empty">No moves yet</span></div>
     </div>
   </div>
 </div>
@@ -804,10 +855,14 @@ async function transmitCW() {
 function addHistory(move) {
   historyLog.push(move);
   const el = document.getElementById('history');
-  el.innerHTML = historyLog.map(m =>
-    `<span class="side-badge side-${m.turn.toUpperCase()}">${m.turn.toUpperCase()}</span>` +
-    `${m.moveStr} <span style="color:var(--color-text-tertiary)">${toMorse(m.moveStr)}</span>`
-  ).join('<br>');
+  if (historyLog.length === 0) {
+    el.innerHTML = '<span class="log-empty">No moves yet</span>';
+  } else {
+    el.innerHTML = historyLog.map(m =>
+      `<span class="side-badge side-${m.turn.toUpperCase()}">${m.turn.toUpperCase()}</span>` +
+      `${m.moveStr} <span style="color:var(--color-text-tertiary)">${toMorse(m.moveStr)}</span>`
+    ).join('<br>');
+  }
   el.scrollTop = el.scrollHeight;
 }
 
@@ -1029,7 +1084,7 @@ document.getElementById('btnReset').addEventListener('click', () => {
   buildBoard();
   document.getElementById('moveDisp').textContent='—';
   document.getElementById('morseDisp').textContent='';
-  document.getElementById('history').textContent='—';
+  document.getElementById('history').innerHTML='<span class="log-empty">No moves yet</span>';
   document.getElementById('btnSend').disabled=true;
   document.getElementById('rxConfirm').style.display='none';
   setStatus('select a piece to move');
@@ -1055,6 +1110,32 @@ document.getElementById('btnApply').addEventListener('click', applyRxMove);
 document.getElementById('btnDiscard').addEventListener('click', () => {
   document.getElementById('rxConfirm').style.display = 'none';
   document.getElementById('rxStatus').textContent = 'discarded';
+});
+
+// ── Navigation ────────────────────────────────────────────────────────────
+const hamburger = document.getElementById('hamburger');
+const navMenu = document.getElementById('navMenu');
+const navItems = document.querySelectorAll('.nav-item');
+const screens = document.querySelectorAll('.screen');
+
+hamburger.addEventListener('click', () => {
+  hamburger.classList.toggle('open');
+  navMenu.classList.toggle('open');
+});
+
+navItems.forEach(item => {
+  item.addEventListener('click', () => {
+    const screenId = item.dataset.screen;
+    // Update nav items
+    navItems.forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    // Update screens
+    screens.forEach(s => s.classList.remove('active'));
+    document.getElementById('screen' + screenId.charAt(0).toUpperCase() + screenId.slice(1)).classList.add('active');
+    // Close menu
+    hamburger.classList.remove('open');
+    navMenu.classList.remove('open');
+  });
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────

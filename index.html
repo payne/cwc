@@ -287,6 +287,7 @@ function toMorse(text) {
 // ── Position encoding (base64) ────────────────────────────────────────────
 // 4 bits per square: 0=empty, 1-6=white KQRBNP, 7-12=black KQRBNP
 const PIECE_TO_NIB = { wK:1,wQ:2,wR:3,wB:4,wN:5,wP:6,bK:7,bQ:8,bR:9,bB:10,bN:11,bP:12 };
+const NIB_TO_PIECE = { 1:'wK',2:'wQ',3:'wR',4:'wB',5:'wN',6:'wP',7:'bK',8:'bQ',9:'bR',10:'bB',11:'bN',12:'bP' };
 
 function boardToBase64() {
   const bytes = [];
@@ -306,8 +307,54 @@ function boardToBase64() {
   return btoa(String.fromCharCode(...bytes));
 }
 
+function base64ToBoard(b64) {
+  try {
+    const str = atob(b64);
+    if (str.length !== 33) return null; // 32 bytes for board + 1 state byte
+    const bytes = [];
+    for (let i = 0; i < str.length; i++) bytes.push(str.charCodeAt(i));
+
+    const newBoard = [];
+    for (let r = 0; r < 8; r++) {
+      newBoard[r] = [];
+      for (let f = 0; f < 8; f++) {
+        const i = r * 8 + f;
+        const byteIdx = Math.floor(i / 2);
+        const nib = (i % 2 === 0) ? (bytes[byteIdx] >> 4) : (bytes[byteIdx] & 0xF);
+        newBoard[r][f] = NIB_TO_PIECE[nib] || null;
+      }
+    }
+
+    const stateByte = bytes[32];
+    const newTurn = (stateByte & 128) ? 'b' : 'w';
+    const newCastling = {
+      wK: !!(stateByte & 64),
+      wQ: !!(stateByte & 32),
+      bK: !!(stateByte & 16),
+      bQ: !!(stateByte & 8)
+    };
+    const epFile = stateByte & 0xF;
+    const newEnPassant = (epFile === 0xF) ? null : { r: (newTurn === 'w' ? 2 : 5), f: epFile };
+
+    return { board: newBoard, turn: newTurn, castling: newCastling, enPassant: newEnPassant };
+  } catch (e) {
+    return null;
+  }
+}
+
+function getPositionUrl() {
+  const b64 = boardToBase64();
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set('pos', b64);
+  return url.toString();
+}
+
 function updateFEN() {
-  document.getElementById('fenDisplay').textContent = boardToBase64();
+  const el = document.getElementById('fenDisplay');
+  const b64 = boardToBase64();
+  const url = getPositionUrl();
+  el.innerHTML = `<a href="${url}" style="color:var(--color-text-secondary);text-decoration:underline;word-break:break-all;">${b64}</a>`;
 }
 
 // ── Board state ───────────────────────────────────────────────────────────
@@ -769,6 +816,7 @@ function onSquareClick(e) {
     turn = turn==='w'?'b':'w';
     buildBoard();
     highlightSquares([r,f],[prevSel.r,prevSel.f]);
+    updateFEN();
     pendingMove = {moveStr, turn: turn==='w'?'b':'w'};
     showMove(moveStr);
     document.getElementById('btnSend').disabled = false;
@@ -1204,6 +1252,18 @@ navItems.forEach(item => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────
+// Check for position in URL parameter
+const urlParams = new URLSearchParams(window.location.search);
+const posParam = urlParams.get('pos');
+if (posParam) {
+  const state = base64ToBoard(posParam);
+  if (state) {
+    board = state.board;
+    turn = state.turn;
+    castling = state.castling;
+    enPassant = state.enPassant;
+  }
+}
 buildBoard();
 updateSquelchMarker();
 updateFEN();

@@ -346,6 +346,7 @@ async function transmitCW() {
   txActive = true;
 
   const ac = getAC();
+  await ac.resume();
   let t = ac.currentTime + 0.05;
   const sched = [];
   for(let i=0;i<morse.length;i++) {
@@ -548,6 +549,7 @@ function processMicBuffer(samples) {
 async function startRX() {
   if(rxActive) { stopRX(); return; }
   const ac = getAC();
+  await ac.resume();
   try {
     rxStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false },

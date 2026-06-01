@@ -382,9 +382,8 @@ async function transmitCW() {
     else {
       led.className = 'led';
       btn.disabled = false; btn.textContent = '▶ transmit CW';
-      setStatus('transmitted — select next move');
+      setStatus('transmitted — press again to repeat or select next move');
       addHistory(pendingMove);
-      pendingMove = null;
       txActive = false;
     }
   };
